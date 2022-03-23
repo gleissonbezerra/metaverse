@@ -1,4 +1,4 @@
-# metaverse
+# METAVERSE
 
 Unity Templates to help on initial Metaverse projects using Oculus Quest 2.
 

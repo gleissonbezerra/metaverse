@@ -10,6 +10,12 @@ Sample Scene with XR Interation Toolkit already imported and applied to the main
 
 Unity Version = 2020.3.31f (LTS)
 
+# BeatBroom
+
+Simple Beat Game using XR Interation Toolkit already imported and applied to the main camera and controllers (Broom and Hammer).
+
+Unity Version = 2020.3.31f (LTS)
+
 # Packages
 
 Unity pacakages to use with current projects  so you don't need to migrate anything. 

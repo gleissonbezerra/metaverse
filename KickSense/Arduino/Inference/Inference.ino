@@ -33,7 +33,7 @@
 #include "model.h"
 
 const float accelerationThreshold = 2.5; // threshold of significant in G's
-const int numSamples = 119;
+const int numSamples = 100;
 
 int samplesRead = numSamples;
 
@@ -41,17 +41,10 @@ int samplesRead = numSamples;
 BLEService* kickDetectionService = nullptr;
 
 //One byte detection data
-// 7 = Reserved
-// 8 = Reserved
-// 6 = Reserved
-// 5 = Reserved
-// 4 = Reserved
-// 3 = Reserved
-// 2 = Reserved
-// 1 = Reserved
-// 0 = Kick/No Kick
+// 2 = Kick confirmed
+// 1 = Moving
+// 0 = No Kick
 BLEUnsignedCharCharacteristic* inferenceChar = nullptr;
-
 
 // global variables used for TensorFlow Lite (Micro)
 tflite::MicroErrorReporter tflErrorReporter;
@@ -99,7 +92,6 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);                // will turn the LED off
 
   Serial.begin(9600);
-  while (!Serial);
 
   // initialize the IMU
   if (!IMU.begin()) {
@@ -147,7 +139,7 @@ void setup() {
   Serial.println();
 
   // get the TFL representation of the model byte array
-  tflModel = tflite::GetModel(__model_kick_model_tflite);
+  tflModel = tflite::GetModel(__kick_model_tflite);
   if (tflModel->version() != TFLITE_SCHEMA_VERSION) {
     digitalWrite(LEDR, LOW);   // turn the LED on (HIGH is the voltage level)
     Serial.println("Error: Model schema mismatch!");
@@ -163,6 +155,9 @@ void setup() {
   // Get pointers for the model's input and output tensors
   tflInputTensor = tflInterpreter->input(0);
   tflOutputTensor = tflInterpreter->output(0);
+
+  digitalWrite(LEDG, LOW);               // will turn the LED on
+
 }
 
 bool active = false;
@@ -182,6 +177,7 @@ void loop() {
     Serial.println(central.address());
     // turn on the LED to indicate the connection:
     digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(LEDG, HIGH);               // will turn the LED off
 
     // while the central is connected:
     while (central.connected()) 
@@ -203,6 +199,13 @@ void loop() {
             // reset the sample read count
             samplesRead = 0;
             active = true;
+
+            if (central.connected())
+            {
+              //Serial.println(inferenceData);
+              inferenceChar->writeValue(1);  // and update the inference characteristic
+            }
+
           }
         }
 
@@ -236,7 +239,6 @@ void loop() {
     
           if (samplesRead == numSamples) {
     
-            int inferenceData = 0;
             active = false;
             
             // Run inferencing
@@ -258,16 +260,15 @@ void loop() {
             
             Serial.println();
     
-            if ( tflOutputTensor->data.f[0] > tflOutputTensor->data.f[1] && tflOutputTensor->data.f[0] > 0.5){ //Kick greater than no-kick
-              inferenceData = 1;
-            }else{
-              inferenceData = 0;
-            }
-    
             if (central.connected())
             {
+              if ( tflOutputTensor->data.f[0] > tflOutputTensor->data.f[1] && tflOutputTensor->data.f[0] > 0.5){ //Kick greater than no-kick
+                inferenceChar->writeValue(2);  // and update the inference characteristic
+              }else{
+                inferenceChar->writeValue(0);  // and update the inference characteristic
+              }
+      
               //Serial.println(inferenceData);
-              inferenceChar->writeValue(inferenceData);  // and update the inference characteristic
             }
             
           }
@@ -282,6 +283,7 @@ void loop() {
    
     // when the central disconnects, turn off the LED:
     digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LEDG, LOW);               // will turn the LED on
     Serial.print("Disconnected from central: ");
     Serial.println(central.address());
   }
